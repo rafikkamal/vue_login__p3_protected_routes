@@ -4,6 +4,8 @@ import store from './store';
 
 Vue.use(Router)
 
+const default_url__dashboard = "/users"
+const default_url__login = "/login"
 
 const router = new Router({
   mode: 'history',
@@ -12,12 +14,26 @@ const router = new Router({
     {
       path: '/login',
       name: 'login',
-      component: () => import(/* webpackChunkName: "login" */ './views/Login.vue')
+      component: () => import('./views/Login.vue'),
+      beforeEnter: (to, from, next) => {
+        checkLoginRegistrationRouteAccess(to, next);
+      }
     },
     {
       path: '/users',
       name: 'users',
-      component: () => import(/* webpackChunkName: "users" */ './views/Users.vue')
+      component: () => import('./views/Users.vue'),
+      beforeEnter: (to, from, next) => {
+        checkAdminRouteAccess(to, next);
+      }
+    },
+    {
+      path: '/user/:id',
+      name: 'user',
+      component: () => import('./views/User.vue'),
+      beforeEnter: (to, from, next) => {
+        checkAdminRouteAccess(to, next);
+      }
     },
     {
       path: '*',
@@ -26,23 +42,60 @@ const router = new Router({
   ]
 })
 
-router.beforeEach((to, from, next) => {
-  store.dispatch('fetchAccessToken');
-  console.log("from: "+from.fullPath);
-  console.log("to: "+to.fullPath);
-  if (to.fullPath === '/users') {
-    if (!store.state.accessToken) {
-      next('/login');
-    }
+/*
+ * Original code from tutorial
+ */
+// router.beforeEach((to, from, next) => {
+//   store.dispatch('fetchAccessToken');
+//   if (to.fullPath === '/users') {
+//     if (!store.state.accessToken) {
+//       next('/login');
+//     }
+//   }
+//   if (to.fullPath === '/login') {
+//     if (store.state.accessToken) {
+//       console.log("has accessToken")
+//       next('/users');
+//     }
+//   }
+//   next();
+// });
+
+/*
+ * My Horrible Creation
+ */
+let checkAdminRouteAccess = (to, next) => {
+  //console.log("to: "+to.fullPath);
+  if (!store.state.accessToken) {
+    next(default_url__login)
+  } else { 
+    next();
   }
-  if (to.fullPath === '/login') {
-    console.log("checking login")
+}
+
+let checkLoginRegistrationRouteAccess = (to, next) => {
+  //console.log("to: "+to.fullPath);
+  if(getLoginRegistrationRoutes().includes(to.name)) {
     if (store.state.accessToken) {
-      console.log("has accessToken")
-      next('/users');
+      next(default_url__dashboard)
+    } else { 
+      next();
     }
   }
-  next();
-});
+}
+
+let getAdminRoutes = () => {
+  return [
+    "users",
+    "user"
+  ];
+}
+
+let getLoginRegistrationRoutes = () => {
+  return [
+    "login",
+    "registration"
+  ];
+}
 
 export default router;
